@@ -3,7 +3,6 @@ using EShop.BuildingBlocks.Common.Behaviors;
 using EShop.BuildingBlocks.Common.Exceptions.Handler;
 using EShop.Catalog.API.Data;
 using FluentValidation;
-using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,11 +23,7 @@ builder.Services.AddSingleton<ICatalogContext, CatalogContext>();
 
 builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 
-builder.Services.AddHealthChecks()
-    .AddMongoDb(
-        sp => new MongoClient(builder.Configuration["DatabaseSettings:ConnectionString"]!),
-        name: "catalog-mongodb",
-        tags: ["ready"]);
+builder.Services.AddHealthChecks();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

@@ -1,4 +1,5 @@
 using EShop.Catalog.API.Models;
+using Mongo2Go;
 using MongoDB.Driver;
 
 namespace EShop.Catalog.API.Data;
@@ -8,11 +9,22 @@ public interface ICatalogContext
     IMongoCollection<Product> Products { get; }
 }
 
-public class CatalogContext : ICatalogContext
+public class CatalogContext : ICatalogContext, IDisposable
 {
+    private readonly MongoDbRunner? _runner;
+
     public CatalogContext(IConfiguration configuration)
     {
-        var client = new MongoClient(configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
+        var connectionString = configuration.GetValue<string>("DatabaseSettings:ConnectionString");
+        var useEmbedded = configuration.GetValue<bool>("DatabaseSettings:UseEmbedded");
+
+        if (useEmbedded)
+        {
+            _runner = MongoDbRunner.Start();
+            connectionString = _runner.ConnectionString;
+        }
+
+        var client = new MongoClient(connectionString);
         var database = client.GetDatabase(configuration.GetValue<string>("DatabaseSettings:DatabaseName"));
 
         Products = database.GetCollection<Product>(
@@ -22,6 +34,11 @@ public class CatalogContext : ICatalogContext
     }
 
     public IMongoCollection<Product> Products { get; }
+
+    public void Dispose()
+    {
+        _runner?.Dispose();
+    }
 
     private static void SeedData(IMongoCollection<Product> products)
     {
