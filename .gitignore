@@ -1,0 +1,23 @@
+## .NET
+bin/
+obj/
+out/
+
+## IDE
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Secrets
+**/secrets.json
+**/appsettings.*.local.json
+
+## Docker 
+**/docker-compose.override.yml

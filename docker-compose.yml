@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # Infrastructure
+  catalogdb:
+    image: mongo:7.0
+    container_name: catalogdb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  basketdb:
+    image: redis:7.2-alpine
+    container_name: basketdb
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  orderdb:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: orderdb
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=SwN12345678!
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  messagebroker:
+    image: rabbitmq:3-management-alpine
+    container_name: messagebroker
+    hostname: eshop-mq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+    ports:
+      - "5341:5341"
+      - "8090:80"
+    volumes:
+      - seq_data:/data
+
+  # Microservices
+  catalog.api:
+    image: ${DOCKER_REGISTRY-}eshop-catalog-api
+    build:
+      context: .
+      dockerfile: src/Services/Catalog/EShop.Catalog.API/Dockerfile
+    container_name: catalog.api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - DatabaseSettings__ConnectionString=mongodb://catalogdb:27017
+      - DatabaseSettings__DatabaseName=CatalogDb
+      - DatabaseSettings__CollectionName=Products
+      - MessageBroker__Host=amqp://messagebroker:5672
+      - MessageBroker__UserName=guest
+      - MessageBroker__Password=guest
+    depends_on:
+      - catalogdb
+      - messagebroker
+    ports:
+      - "5050:8080"
+
+  # API Gateway
+  gateway:
+    image: ${DOCKER_REGISTRY-}eshop-gateway
+    build:
+      context: .
+      dockerfile: src/ApiGateways/EShop.Gateway/Dockerfile
+    container_name: gateway
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ReverseProxy__Clusters__catalog-cluster__Destinations__destination1__Address=http://catalog.api:8080
+      - ReverseProxy__Clusters__basket-cluster__Destinations__destination1__Address=http://basket.api:8080
+      - ReverseProxy__Clusters__ordering-cluster__Destinations__destination1__Address=http://ordering.api:8080
+    depends_on:
+      - catalog.api
+    ports:
+      - "5000:8080"
+
+volumes:
+  mongo_data:
+  redis_data:
+  mssql_data:
+  rabbitmq_data:
+  seq_data:

@@ -1,0 +1,15 @@
+# This file is used to ignore files which are generated via build or other processes
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+**/.vscode/
+**/node_modules/
+**/*.user
+**/*.userosscache
+**/*.suo
+**/.git
+**/.gitignore
+**/secrets.dev.yaml
+**/values.dev.yaml
+**/Thumbs.db
