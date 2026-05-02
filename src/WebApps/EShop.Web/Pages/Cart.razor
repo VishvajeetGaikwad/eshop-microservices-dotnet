@@ -126,7 +126,14 @@
     private async Task LoadCart()
     {
         _loading = true;
-        _cart = await BasketService.GetBasket(UserName);
+        try
+        {
+            _cart = await BasketService.GetBasket(UserName);
+        }
+        catch (Exception)
+        {
+            _cart = new ShoppingCart { UserName = UserName };
+        }
         _loading = false;
     }
 

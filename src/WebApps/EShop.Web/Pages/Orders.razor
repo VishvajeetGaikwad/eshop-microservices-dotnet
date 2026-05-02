@@ -20,6 +20,12 @@
             </div>
         </div>
     }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> @_errorMessage
+        </div>
+    }
     else if (_orders.Count == 0)
     {
         <div class="text-center py-5">
@@ -96,11 +102,20 @@
 @code {
     private List<OrderModel> _orders = [];
     private bool _loading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         _loading = true;
-        _orders = await OrderService.GetOrders();
+        try
+        {
+            _orders = await OrderService.GetOrders();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load orders. ({ex.GetType().Name})";
+            _orders = [];
+        }
         _loading = false;
     }
 }

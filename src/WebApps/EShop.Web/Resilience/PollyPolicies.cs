@@ -22,8 +22,6 @@ namespace EShop.Web.Resilience;
 ///    During this time, requests fail immediately (fast-fail) instead of waiting
 ///    for timeouts. After 30s, one test request is allowed through (half-open state).
 /// 
-/// 3. TIMEOUT: Individual requests timeout after 10s to prevent thread starvation.
-/// 
 /// Interview talking point: "We implemented the Circuit Breaker pattern with Polly to
 /// prevent cascading failures. When the Ordering service was down, checkout requests
 /// would hang for 30+ seconds. With circuit breaker, after 5 failures it fails fast,
@@ -40,11 +38,12 @@ public static class PollyPolicies
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError() // 5xx, 408, network failures
+            .Or<HttpRequestException>() // Also handle connection refused in WASM
             .WaitAndRetryAsync(
-                retryCount: 3,
+                retryCount: 2,
                 sleepDurationProvider: retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))  // 2s, 4s, 8s
-                    + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)), // jitter
+                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))  // 2s, 4s
+                    + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)), // jitter
                 onRetry: (outcome, timespan, retryAttempt, context) =>
                 {
                     Console.WriteLine(
@@ -65,6 +64,7 @@ public static class PollyPolicies
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
+            .Or<HttpRequestException>()
             .CircuitBreakerAsync(
                 handledEventsAllowedBeforeBreaking: 5,    // Open after 5 failures
                 durationOfBreak: TimeSpan.FromSeconds(30), // Stay open for 30s

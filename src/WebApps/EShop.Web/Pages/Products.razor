@@ -37,6 +37,13 @@
             </div>
         </div>
     }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> @_errorMessage
+            <button class="btn btn-sm btn-outline-danger ms-3" @onclick="Retry">Retry</button>
+        </div>
+    }
     else if (_products.Count == 0)
     {
         <div class="alert alert-info">No products found.</div>
@@ -95,15 +102,35 @@
     private bool _loading = true;
     private bool _showToast;
     private string _toastMessage = "";
+    private string? _errorMessage;
     private const string UserName = "john_doe";
 
     protected override async Task OnParametersSetAsync()
     {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
         _loading = true;
-        _products = string.IsNullOrEmpty(Category)
-            ? await CatalogService.GetProducts()
-            : await CatalogService.GetProductsByCategory(Category);
+        _errorMessage = null;
+        try
+        {
+            _products = string.IsNullOrEmpty(Category)
+                ? await CatalogService.GetProducts()
+                : await CatalogService.GetProductsByCategory(Category);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load products. The Catalog service may be unavailable. ({ex.GetType().Name})";
+            _products = [];
+        }
         _loading = false;
+    }
+
+    private async Task Retry()
+    {
+        await LoadProducts();
     }
 
     private async Task AddToCart(ProductModel product)
