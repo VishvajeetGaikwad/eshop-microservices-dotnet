@@ -63,15 +63,9 @@
                 <ul class="list-group list-group-flush">
                     @foreach (var step in _sagaResult.Steps)
                     {
-                        var badgeClass = step.Status switch
-                        {
-                            SagaStepStatus.Completed => "bg-success",
-                            SagaStepStatus.Failed => "bg-danger",
-                            _ => "bg-warning"
-                        };
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>@step.Name @(step.Error != null ? $"— {step.Error}" : "")</span>
-                            <span class="badge @badgeClass">@step.Status</span>
+                            <span>@(step.Name) @(step.Error != null ? $"— {step.Error}" : "")</span>
+                            <span class="badge @(GetBadgeClass(step.Status))">@(step.Status)</span>
                         </li>
                     }
                 </ul>
@@ -226,7 +220,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _cart = await BasketService.GetBasket(UserName);
+        try
+        {
+            _cart = await BasketService.GetBasket(UserName);
+        }
+        catch (Exception)
+        {
+            _cart = new ShoppingCart { UserName = UserName };
+        }
     }
 
     private async Task PlaceOrder()
@@ -235,6 +236,8 @@
         _errorMessage = null;
         StateHasChanged();
 
+        try
+        {
         // Generate idempotency key to prevent duplicate orders on double-click/retry
         var idempotencyKey = $"{UserName}-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
 
@@ -301,6 +304,12 @@
         _sagaResult = await SagaOrchestrator.ExecuteAsync(sagaContext);
         _orderPlaced = _sagaResult.IsSuccess;
         _errorMessage = _sagaResult.ErrorMessage;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Checkout failed: {ex.Message}";
+            _orderPlaced = false;
+        }
         _processing = false;
         StateHasChanged();
     }
@@ -313,4 +322,11 @@
     }
 
     private string CartTotal() => _cart.Items.Sum(i => i.Price * i.Quantity).ToString("N2");
+
+    private static string GetBadgeClass(SagaStepStatus status)
+    {
+        if (status == SagaStepStatus.Completed) return "bg-success";
+        if (status == SagaStepStatus.Failed) return "bg-danger";
+        return "bg-warning";
+    }
 }
