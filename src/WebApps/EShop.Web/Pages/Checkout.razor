@@ -2,6 +2,7 @@
 @using EShop.Web.Models
 @using EShop.Web.Services
 @inject IBasketService BasketService
+@inject IOrderService OrderService
 @inject NavigationManager Navigation
 
 <PageTitle>EShop - Checkout</PageTitle>
@@ -181,11 +182,61 @@
         _processing = true;
         StateHasChanged();
 
-        _checkout.UserName = UserName;
-        var success = await BasketService.Checkout(_checkout);
+        // Create order directly via Ordering API
+        // (MassTransit InMemory bus doesn't work across separate processes)
+        var order = new OrderModel
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = _checkout.CustomerId,
+            OrderName = $"Order-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
+            ShippingAddress = new AddressModel
+            {
+                FirstName = _checkout.FirstName,
+                LastName = _checkout.LastName,
+                EmailAddress = _checkout.EmailAddress,
+                AddressLine = _checkout.AddressLine,
+                Country = _checkout.Country,
+                State = _checkout.State,
+                ZipCode = _checkout.ZipCode
+            },
+            Payment = new PaymentModel
+            {
+                CardName = _checkout.CardName,
+                CardNumber = _checkout.CardNumber,
+                Expiration = _checkout.Expiration,
+                Cvv = _checkout.Cvv,
+                PaymentMethod = _checkout.PaymentMethod
+            },
+            Status = 1, // Pending
+            OrderItems = _cart.Items.Select(item => new OrderItemModel
+            {
+                ProductId = GenerateGuidFromString(item.ProductId),
+                ProductName = item.ProductName,
+                Price = item.Price,
+                Quantity = item.Quantity
+            }).ToList(),
+            TotalPrice = _cart.Items.Sum(x => x.Price * x.Quantity)
+        };
+
+        var orderId = await OrderService.CreateOrder(order);
+        var success = orderId.HasValue;
+
+        if (success)
+        {
+            // Clear the basket after successful order
+            _checkout.UserName = UserName;
+            await BasketService.Checkout(_checkout);
+        }
 
         _processing = false;
         _orderPlaced = success;
         StateHasChanged();
+    }
+
+    private static Guid GenerateGuidFromString(string input)
+    {
+        using var md5 = System.Security.Cryptography.MD5.Create();
+        var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input));
+        return new Guid(hash);
     }
 }

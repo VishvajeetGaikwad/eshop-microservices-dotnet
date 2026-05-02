@@ -45,6 +45,11 @@ public class GetOrdersResponse
     public List<OrderModel> Orders { get; set; } = [];
 }
 
+public class CreateOrderResponse
+{
+    public Guid Id { get; set; }
+}
+
 public static class OrderStatusHelper
 {
     public static string GetStatusText(int status) => status switch
