@@ -1,159 +1,199 @@
 # EShop Microservices
 
-A production-ready microservices-based e-commerce application built with .NET 8, demonstrating enterprise architecture patterns, CQRS, Event-Driven Architecture, and containerized deployment.
+A production-grade **Microservices E-Commerce System** built with .NET 8, demonstrating real-world distributed systems patterns including Saga Orchestration, Idempotency, Circuit Breaker, Domain-Driven Design, and CQRS.
 
-## 🏗️ Architecture
+## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              Blazor WebAssembly (Frontend)               │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│               YARP API Gateway (:5000)                  │
-└──┬──────────┬──────────┬──────────┬─────────────────────┘
-   │          │          │          │
-   ▼          ▼          ▼          ▼
-┌──────┐ ┌────────┐ ┌────────┐ ┌──────────────┐
-│Catalog│ │Basket  │ │Ordering│ │   Identity   │
-│ :5050 │ │ :5060  │ │ :5070  │ │    :5080     │
-└──┬────┘ └──┬─────┘ └──┬─────┘ └──────┬───────┘
-   │          │          │              │
-   ▼          ▼          ▼              ▼
- MongoDB    Redis    SQL Server    SQL Server
-
-         ← RabbitMQ + MassTransit (Event Bus) →
+┌─────────────────────────────────────────────────────────────────┐
+│                    Blazor WebAssembly (SPA)                      │
+│              Products │ Cart │ Checkout │ Orders                 │
+│         ┌──────────────────────────────────────────┐            │
+│         │  Polly: Retry + Circuit Breaker + Jitter │            │
+│         │  Saga Orchestrator (Checkout Flow)        │            │
+│         │  Idempotency Keys (Duplicate Prevention)  │            │
+│         └──────────┬───────────┬───────────┬───────┘            │
+└────────────────────┼───────────┼───────────┼────────────────────┘
+                     │           │           │
+            ┌────────▼──┐  ┌────▼────┐  ┌───▼────────┐
+            │  Catalog   │  │ Basket  │  │  Ordering  │
+            │  Service   │  │ Service │  │  Service   │
+            │  :5050     │  │ :6060   │  │  :5070     │
+            ├────────────┤  ├─────────┤  ├────────────┤
+            │ Vertical   │  │Vertical │  │   Clean    │
+            │ Slice +    │  │ Slice + │  │Architecture│
+            │ CQRS       │  │ CQRS    │  │  + DDD     │
+            ├────────────┤  ├─────────┤  ├────────────┤
+            │ MongoDB    │  │Distrib. │  │ EF Core    │
+            │ (Mongo2Go) │  │ Cache   │  │ InMemory   │
+            └────────────┘  └─────────┘  └────────────┘
+                     │           │           │
+            ┌────────▼───────────▼───────────▼────────┐
+            │          MassTransit Event Bus           │
+            │        (InMemory / RabbitMQ ready)       │
+            └─────────────────────────────────────────┘
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | Blazor WebAssembly |
-| **API Gateway** | YARP Reverse Proxy |
-| **Services** | .NET 8 Minimal APIs |
-| **CQRS** | MediatR |
-| **Validation** | FluentValidation |
-| **Messaging** | RabbitMQ + MassTransit |
-| **Databases** | MongoDB, Redis, SQL Server |
-| **ORM** | EF Core, MongoDB Driver |
-| **Containers** | Docker, Docker Compose |
-| **Logging** | Serilog + Seq |
-| **Health Checks** | ASP.NET Core Health Checks |
-| **API Docs** | Swagger / OpenAPI |
+| **Frontend** | Blazor WebAssembly, Bootstrap 5.3, Bootstrap Icons |
+| **API Services** | .NET 8 Minimal APIs, Carter, MediatR (CQRS) |
+| **Validation** | FluentValidation with MediatR Pipeline Behaviors |
+| **Messaging** | MassTransit (InMemory / RabbitMQ) |
+| **Databases** | MongoDB (Mongo2Go), EF Core InMemory, Distributed Memory Cache |
+| **API Gateway** | YARP (Yet Another Reverse Proxy) |
+| **Resilience** | Polly v8 (Retry, Circuit Breaker, Exponential Backoff + Jitter) |
+| **Patterns** | Saga Orchestration, Idempotency Keys, CQRS, DDD, Vertical Slice, Clean Architecture |
+| **DevOps** | Docker Compose, Health Checks, Swagger/OpenAPI |
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 EShopMicroservices/
 ├── src/
 │   ├── ApiGateways/
-│   │   └── EShop.Gateway/                 # YARP API Gateway
+│   │   └── EShop.Gateway/                    # YARP API Gateway
 │   ├── BuildingBlocks/
-│   │   ├── EShop.BuildingBlocks.Common/   # CQRS, Behaviors, Exceptions
-│   │   └── EShop.BuildingBlocks.Messaging/# MassTransit integration events
+│   │   ├── EShop.BuildingBlocks.Common/       # CQRS abstractions, Behaviors, Exception Handling
+│   │   └── EShop.BuildingBlocks.Messaging/    # MassTransit integration events
 │   ├── Services/
-│   │   ├── Catalog/EShop.Catalog.API/     # Product catalog (MongoDB)
-│   │   ├── Basket/                        # Shopping cart (Redis)
-│   │   ├── Ordering/                      # Order management (SQL Server + DDD)
-│   │   ├── Identity/                      # Authentication & Authorization
-│   │   ├── Payment/                       # Payment processing (Saga)
-│   │   └── Notification/                  # Email/Push notifications
-│   └── WebApps/                           # Blazor WASM frontend
-├── tests/
+│   │   ├── Catalog/
+│   │   │   └── EShop.Catalog.API/             # Vertical Slice Architecture + MongoDB
+│   │   ├── Basket/
+│   │   │   └── EShop.Basket.API/              # Vertical Slice + Distributed Cache
+│   │   └── Ordering/
+│   │       ├── EShop.Ordering.API/            # Endpoints, Idempotency Filter
+│   │       ├── EShop.Ordering.Application/    # CQRS Handlers, DTOs, Validators
+│   │       ├── EShop.Ordering.Domain/         # DDD: Aggregates, Value Objects, Domain Events
+│   │       └── EShop.Ordering.Infrastructure/ # EF Core DbContext, Repositories
+│   └── WebApps/
+│       └── EShop.Web/                         # Blazor WASM Frontend
+│           ├── Pages/                         # Products, Cart, Checkout, Orders
+│           ├── Services/                      # Typed HttpClients, Saga Orchestrator
+│           └── Resilience/                    # Polly policies configuration
+├── docs/
+│   ├── ARCHITECTURE.md                        # Detailed architecture decisions
+│   └── RESILIENCE-PATTERNS.md                 # Saga, Idempotency, Circuit Breaker
 ├── docker-compose.yml
 └── EShopMicroservices.sln
 ```
 
-## 🚀 Getting Started
+## Quick Start
 
 ### Prerequisites
-
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- (Optional) [Docker Desktop](https://www.docker.com/products/docker-desktop) for containerized deployment
+
+### Run Locally
+
+```bash
+# 1. Build the solution
+dotnet build EShopMicroservices.sln
+
+# 2. Start each service in a separate terminal
+dotnet run --project src/Services/Catalog/EShop.Catalog.API --urls http://localhost:5050
+dotnet run --project src/Services/Basket/EShop.Basket.API --urls http://localhost:6060
+dotnet run --project src/Services/Ordering/EShop.Ordering.API --urls http://localhost:5070
+
+# 3. Start the Blazor frontend
+dotnet run --project src/WebApps/EShop.Web --urls http://localhost:5200
+```
+
+Open http://localhost:5200 to use the application.
+
+### Service URLs
+
+| Service | URL | Swagger |
+|---------|-----|---------|
+| Catalog API | http://localhost:5050 | http://localhost:5050/swagger |
+| Basket API | http://localhost:6060 | http://localhost:6060/swagger |
+| Ordering API | http://localhost:5070 | http://localhost:5070/swagger |
+| Blazor Frontend | http://localhost:5200 | — |
 
 ### Run with Docker Compose
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/EShopMicroservices.git
-cd EShopMicroservices
-
-# Start all services
 docker-compose up -d
-
-# Check services are running
-docker-compose ps
 ```
 
-### Run Locally (Development)
+## Key Features
 
-```bash
-# Start infrastructure only
-docker-compose up -d catalogdb basketdb orderdb messagebroker seq
+### Microservice Architecture Patterns
+- **CQRS** — Command/Query separation with MediatR pipeline
+- **Vertical Slice Architecture** — Feature folders in Catalog & Basket services
+- **Clean Architecture + DDD** — Layered with Dependency Inversion in Ordering service
+- **Event-Driven Communication** — MassTransit integration events between services
+- **API Gateway** — YARP reverse proxy for unified frontend access
+- **Polyglot Persistence** — Right database per service bounded context
 
-# Run Catalog service
-cd src/Services/Catalog/EShop.Catalog.API
-dotnet run
+### Production Resilience Patterns
+- **Saga Orchestration** — Multi-step checkout with compensation (rollback) on failure
+- **Idempotency Keys** — Prevent duplicate orders from network retries
+- **Circuit Breaker** — Polly-based fault tolerance with exponential backoff + jitter
 
-# Run Gateway (separate terminal)
-cd src/ApiGateways/EShop.Gateway
-dotnet run
-```
+> See [docs/RESILIENCE-PATTERNS.md](docs/RESILIENCE-PATTERNS.md) for implementation details and interview talking points.
 
-### Access Points
+### Full E-Commerce Flow
+1. Browse products with category filtering
+2. Add items to shopping cart
+3. Checkout via Saga orchestration (CreateOrder → ClearBasket → Confirm)
+4. View order history with status tracking
 
-| Service | URL |
-|---------|-----|
-| **API Gateway** | http://localhost:5000 |
-| **Catalog API** | http://localhost:5050/swagger |
-| **RabbitMQ Dashboard** | http://localhost:15672 (guest/guest) |
-| **Seq Log Dashboard** | http://localhost:8090 |
+## API Endpoints
 
-## 🧪 API Examples
+### Catalog Service (`/api/v1/catalog`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/products` | Get paginated products |
+| GET | `/products/{id}` | Get product by ID |
+| GET | `/products/category/{category}` | Filter by category |
+| POST | `/products` | Create product |
+| PUT | `/products` | Update product |
+| DELETE | `/products/{id}` | Delete product |
 
-### Create a Product
-```bash
-POST http://localhost:5000/api/v1/catalog/products
-Content-Type: application/json
+### Basket Service (`/api/v1/basket`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/{userName}` | Get user's basket |
+| POST | `/` | Store/update basket |
+| DELETE | `/{userName}` | Delete basket |
+| POST | `/checkout` | Checkout basket |
 
-{
-  "name": "Gaming Keyboard",
-  "category": ["Peripherals", "Gaming"],
-  "description": "Mechanical RGB keyboard",
-  "imageFile": "keyboard.png",
-  "price": 129.99
-}
-```
+### Ordering Service (`/api/v1/ordering`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/orders` | Get all orders |
+| GET | `/orders/customer/{customerId}` | Get orders by customer |
+| POST | `/orders` | Create order (idempotent) |
+| PUT | `/orders` | Update order |
+| DELETE | `/orders/{id}` | Delete order |
 
-### Get All Products (Paginated)
-```bash
-GET http://localhost:5000/api/v1/catalog/products?pageIndex=0&pageSize=10
-```
+## Architecture Decisions
 
-### Get Products by Category
-```bash
-GET http://localhost:5000/api/v1/catalog/products/category/Electronics
-```
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Service communication | Direct HTTP + Event Bus | Sync for queries, async for state changes |
+| Ordering architecture | Clean Architecture + DDD | Complex domain logic warrants full DDD |
+| Catalog/Basket architecture | Vertical Slice | Simple CRUD, feature cohesion over layer separation |
+| Database per service | MongoDB / Cache / EF Core | Polyglot persistence — right tool per use case |
+| Idempotency | Endpoint Filter + ConcurrentDictionary | Prevents duplicate creates from network retries |
+| Saga | Orchestration (not Choreography) | Explicit control flow, easier to reason about failures |
+| Resilience | Polly v8 Pipelines | Industry standard, composable policies |
 
-## 🏛️ Architecture Patterns
+## Completed Phases
 
-- **CQRS** (Command Query Responsibility Segregation) via MediatR
-- **Vertical Slice Architecture** — features organized by business capability
-- **Repository Pattern** with MongoDB collections
-- **API Gateway Pattern** via YARP reverse proxy
-- **Event-Driven Architecture** with RabbitMQ + MassTransit
-- **Pipeline Behaviors** for cross-cutting concerns (validation, logging)
-- **Health Check Pattern** for service monitoring
-- **Polyglot Persistence** — right database for each service
+- [x] **Phase 1** — Foundation: Solution structure, Catalog service, API Gateway, Docker Compose
+- [x] **Phase 2** — Core Commerce: Basket service, Ordering service (DDD/Clean Arch), Event Bus
+- [x] **Phase 3** — Frontend: Blazor WebAssembly SPA with typed HTTP clients
+- [x] **Phase 4** — Production Resilience: Saga pattern, Idempotency keys, Circuit Breaker
 
-## 📋 Roadmap
+## Documentation
 
-- [x] Phase 1: Foundation (Solution structure, Catalog, Gateway, Docker)
-- [ ] Phase 2: Core Commerce (Basket, Ordering, Event Bus integration)
-- [ ] Phase 3: Cross-Cutting (Identity, Payment Saga, Notifications)
-- [ ] Phase 4: Frontend & Polish (Blazor WASM, Logging, Integration Tests)
+- [Architecture Deep Dive](docs/ARCHITECTURE.md)
+- [Resilience Patterns](docs/RESILIENCE-PATTERNS.md)
 
-## 📝 License
+## License
 
-This project is licensed under the MIT License.
+This project is for educational and portfolio purposes.
