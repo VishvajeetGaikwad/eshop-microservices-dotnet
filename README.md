@@ -2,21 +2,13 @@
 
 A production-grade **Microservices E-Commerce System** built with .NET 8, demonstrating real-world distributed systems patterns including Saga Orchestration, Idempotency, Circuit Breaker, Domain-Driven Design, and CQRS.
 
-## Problem Statement
+## Problems Solved
 
-> **"How do you handle distributed transactions, data consistency, and cascading failures when a monolithic e-commerce system is decomposed into microservices?"**
-
-In a monolith, placing an order is a single database transaction — create order, deduct stock, clear cart, done. But in microservices, each service owns its own database. There's **no distributed transaction** that spans MongoDB, a cache, and a SQL database atomically.
-
-This project solves three real problems that every microservices system faces:
-
-| Problem | What Goes Wrong | Solution Implemented |
-|---------|----------------|---------------------|
-| **No distributed transactions** | Order is created but basket isn't cleared (or vice versa) — user sees inconsistent state | **Saga Orchestration** with compensating transactions (automatic rollback) |
-| **Network retries cause duplicates** | Timeout on order creation → client retries → two identical orders charged to customer | **Idempotency Keys** — server deduplicates requests using a unique key per operation |
-| **Cascading failures** | Catalog service goes down → every page hangs for 30s → entire app feels broken | **Circuit Breaker** — fail fast after 5 errors, stop hammering the dead service, recover gracefully |
-
-These aren't theoretical patterns — they're the exact problems you hit the moment you move from `localhost` monolith to independently deployed services communicating over unreliable networks.
+| # | Problem | Solution | Priority |
+|---|---------|----------|----------|
+| 1 | Order placed but basket not cleared (partial failure) | Saga Pattern with compensation | Very High |
+| 2 | User double-clicks Place Order (duplicate orders) | Idempotency Keys | High |
+| 3 | Ordering service is down during checkout | Circuit Breaker + Retry (Polly) | High |
 
 ## Architecture Overview
 
