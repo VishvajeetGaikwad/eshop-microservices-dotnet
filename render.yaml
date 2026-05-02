@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: eshop-catalog-api
+    runtime: docker
+    dockerfilePath: src/Services/Catalog/EShop.Catalog.API/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "8080"
+
+  - type: web
+    name: eshop-basket-api
+    runtime: docker
+    dockerfilePath: src/Services/Basket/EShop.Basket.API/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "8080"
+
+  - type: web
+    name: eshop-ordering-api
+    runtime: docker
+    dockerfilePath: src/Services/Ordering/EShop.Ordering.API/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "8080"
+
+  - type: web
+    name: eshop-web
+    runtime: docker
+    dockerfilePath: src/WebApps/EShop.Web/Dockerfile
+    dockerContext: .
+    plan: free
