@@ -164,7 +164,7 @@
                             @foreach (var item in _cart.Items)
                             {
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span>@item.ProductName x @item.Quantity</span>
+                                    <span>@(item.ProductName) x @(item.Quantity)</span>
                                     <span>$@((item.Price * item.Quantity).ToString("N2"))</span>
                                 </div>
                             }
