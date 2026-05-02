@@ -1,0 +1,191 @@
+@page "/checkout"
+@using EShop.Web.Models
+@using EShop.Web.Services
+@inject IBasketService BasketService
+@inject NavigationManager Navigation
+
+<PageTitle>EShop - Checkout</PageTitle>
+
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-credit-card"></i> Checkout</h2>
+        </div>
+    </div>
+
+    @if (_orderPlaced)
+    {
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+            </div>
+            <h3 class="text-success">Order Placed Successfully!</h3>
+            <p class="text-muted">Thank you for your purchase. Your order is being processed.</p>
+            <div class="mt-4">
+                <a href="/orders" class="btn btn-primary me-2">
+                    <i class="bi bi-list-check"></i> View Orders
+                </a>
+                <a href="/products" class="btn btn-outline-secondary">
+                    <i class="bi bi-shop"></i> Continue Shopping
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <!-- Checkout Form -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Shipping Address</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-control" @bind="_checkout.FirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-control" @bind="_checkout.LastName" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" @bind="_checkout.EmailAddress" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <input type="text" class="form-control" @bind="_checkout.AddressLine" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Country</label>
+                                <input type="text" class="form-control" @bind="_checkout.Country" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">State</label>
+                                <input type="text" class="form-control" @bind="_checkout.State" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Zip Code</label>
+                                <input type="text" class="form-control" @bind="_checkout.ZipCode" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-credit-card-2-front"></i> Payment Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Name on Card</label>
+                                <input type="text" class="form-control" @bind="_checkout.CardName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Card Number</label>
+                                <input type="text" class="form-control" @bind="_checkout.CardNumber" placeholder="4111 1111 1111 1111" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Expiration</label>
+                                <input type="text" class="form-control" @bind="_checkout.Expiration" placeholder="MM/YY" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">CVV</label>
+                                <input type="text" class="form-control" @bind="_checkout.Cvv" placeholder="123" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (_cart.Items.Count > 0)
+                        {
+                            @foreach (var item in _cart.Items)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@item.ProductName x@item.Quantity</span>
+                                    <span>$@((item.Price * item.Quantity).ToString("N2"))</span>
+                                </div>
+                            }
+                            <hr>
+                            <div class="d-flex justify-content-between fw-bold fs-5">
+                                <span>Total</span>
+                                <span class="text-primary">$@_cart.Items.Sum(x => x.Price * x.Quantity).ToString("N2")</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted">Cart is empty</p>
+                        }
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-success w-100 btn-lg" @onclick="PlaceOrder" disabled="@(_processing || _cart.Items.Count == 0)">
+                            @if (_processing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-lock"></i>
+                                <span> Place Order</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ShoppingCart _cart = new();
+    private BasketCheckoutRequest _checkout = new()
+    {
+        CustomerId = Guid.Parse("d290f1ee-6c54-4b01-90e6-d701748f0851"),
+        UserName = "john_doe",
+        FirstName = "John",
+        LastName = "Doe",
+        EmailAddress = "john@example.com",
+        AddressLine = "123 Main St",
+        Country = "USA",
+        State = "NY",
+        ZipCode = "10001",
+        CardName = "John Doe",
+        CardNumber = "4111111111111111",
+        Expiration = "12/25",
+        Cvv = "123",
+        PaymentMethod = 1
+    };
+    private bool _processing;
+    private bool _orderPlaced;
+    private const string UserName = "john_doe";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cart = await BasketService.GetBasket(UserName);
+    }
+
+    private async Task PlaceOrder()
+    {
+        _processing = true;
+        StateHasChanged();
+
+        _checkout.UserName = UserName;
+        var success = await BasketService.Checkout(_checkout);
+
+        _processing = false;
+        _orderPlaced = success;
+        StateHasChanged();
+    }
+}
