@@ -3,19 +3,23 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-# Install MongoDB for Mongo2Go embedded database
+# Install MongoDB tools for Mongo2Go embedded database
 RUN apt-get update && \
     apt-get install -y gnupg curl && \
     curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-server-7.0.gpg && \
     echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list && \
     apt-get update && \
-    apt-get install -y mongodb-org-server && \
+    apt-get install -y mongodb-org-server mongodb-org-tools mongodb-database-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create directory structure that Mongo2Go expects
+# Create directory structure that Mongo2Go expects and copy all binaries
 RUN mkdir -p /app/tools/mongodb-linux-x86_64/bin && \
-    ln -s /usr/bin/mongod /app/tools/mongodb-linux-x86_64/bin/mongod && \
-    ln -s /usr/bin/mongos /app/tools/mongodb-linux-x86_64/bin/mongos 2>/dev/null; true
+    cp /usr/bin/mongod /app/tools/mongodb-linux-x86_64/bin/ && \
+    cp /usr/bin/mongos /app/tools/mongodb-linux-x86_64/bin/ 2>/dev/null; \
+    for f in mongoexport mongoimport mongodump mongorestore mongostat mongotop; do \
+      cp /usr/bin/$f /app/tools/mongodb-linux-x86_64/bin/ 2>/dev/null; true; \
+    done && \
+    chmod -R 755 /app/tools/
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
