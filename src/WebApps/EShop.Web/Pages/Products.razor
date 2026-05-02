@@ -67,7 +67,7 @@
                                     <span class="badge bg-info me-1">@cat</span>
                                 }
                             </div>
-                            <h4 class="text-primary">$@product.Price.ToString("N2")</h4>
+                            <h4 class="text-primary">$@(product.Price.ToString("N2"))</h4>
                         </div>
                         <div class="card-footer bg-white border-top-0">
                             <button class="btn btn-success w-100" @onclick="() => AddToCart(product)">

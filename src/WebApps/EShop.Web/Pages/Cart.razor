@@ -56,7 +56,7 @@
                                             <strong>@item.ProductName</strong>
                                             <br><small class="text-muted">Color: @item.Color</small>
                                         </td>
-                                        <td class="text-center align-middle">$@item.Price.ToString("N2")</td>
+                                        <td class="text-center align-middle">$@(item.Price.ToString("N2"))</td>
                                         <td class="text-center align-middle">
                                             <div class="btn-group btn-group-sm">
                                                 <button class="btn btn-outline-secondary" @onclick="() => UpdateQuantity(item, -1)">−</button>
@@ -86,8 +86,8 @@
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-2">
-                            <span>Items (@_cart.Items.Sum(x => x.Quantity))</span>
-                            <span>$@_cart.Items.Sum(x => x.Price * x.Quantity).ToString("N2")</span>
+                            <span>Items (@(ItemCount()))</span>
+                            <span>$@(CartTotal())</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span>Shipping</span>
@@ -96,7 +96,7 @@
                         <hr>
                         <div class="d-flex justify-content-between fw-bold fs-5">
                             <span>Total</span>
-                            <span class="text-primary">$@_cart.Items.Sum(x => x.Price * x.Quantity).ToString("N2")</span>
+                            <span class="text-primary">$@(CartTotal())</span>
                         </div>
                     </div>
                     <div class="card-footer">
@@ -154,4 +154,7 @@
         await BasketService.StoreBasket(_cart);
         StateHasChanged();
     }
+
+    private string CartTotal() => _cart.Items.Sum(i => i.Price * i.Quantity).ToString("N2");
+    private int ItemCount() => _cart.Items.Sum(i => i.Quantity);
 }

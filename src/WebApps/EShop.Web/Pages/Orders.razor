@@ -69,7 +69,7 @@
                                         <tr>
                                             <td>@item.ProductName</td>
                                             <td class="text-center">@item.Quantity</td>
-                                            <td class="text-end">$@item.Price.ToString("N2")</td>
+                                            <td class="text-end">$@(item.Price.ToString("N2"))</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -90,7 +90,7 @@
                         <!-- Total -->
                         <div class="col-md-3 text-end">
                             <h6 class="text-muted mb-2">Total</h6>
-                            <h4 class="text-primary">$@order.TotalPrice.ToString("N2")</h4>
+                            <h4 class="text-primary">$@(order.TotalPrice.ToString("N2"))</h4>
                         </div>
                     </div>
                 </div>

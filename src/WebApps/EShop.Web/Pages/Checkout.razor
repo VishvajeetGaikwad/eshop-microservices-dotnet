@@ -164,14 +164,14 @@
                             @foreach (var item in _cart.Items)
                             {
                                 <div class="d-flex justify-content-between mb-2">
-                                    <span>@item.ProductName x@item.Quantity</span>
+                                    <span>@item.ProductName x @item.Quantity</span>
                                     <span>$@((item.Price * item.Quantity).ToString("N2"))</span>
                                 </div>
                             }
                             <hr>
                             <div class="d-flex justify-content-between fw-bold fs-5">
                                 <span>Total</span>
-                                <span class="text-primary">$@_cart.Items.Sum(x => x.Price * x.Quantity).ToString("N2")</span>
+                                <span class="text-primary">$@(CartTotal())</span>
                             </div>
                         }
                         else
@@ -311,4 +311,6 @@
         var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input));
         return new Guid(hash);
     }
+
+    private string CartTotal() => _cart.Items.Sum(i => i.Price * i.Quantity).ToString("N2");
 }
