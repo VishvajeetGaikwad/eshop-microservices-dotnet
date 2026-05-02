@@ -3,6 +3,7 @@
 @using EShop.Web.Services
 @inject IBasketService BasketService
 @inject IOrderService OrderService
+@inject ICheckoutSagaOrchestrator SagaOrchestrator
 @inject NavigationManager Navigation
 
 <PageTitle>EShop - Checkout</PageTitle>
@@ -22,6 +23,23 @@
             </div>
             <h3 class="text-success">Order Placed Successfully!</h3>
             <p class="text-muted">Thank you for your purchase. Your order is being processed.</p>
+
+            @if (_sagaResult != null)
+            {
+                <div class="mt-3 mx-auto" style="max-width: 400px;">
+                    <h6 class="text-start"><i class="bi bi-diagram-3"></i> Saga Execution Steps:</h6>
+                    <ul class="list-group list-group-flush text-start">
+                        @foreach (var step in _sagaResult.Steps)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@step.Name</span>
+                                <span class="badge bg-success">@step.Status</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+
             <div class="mt-4">
                 <a href="/orders" class="btn btn-primary me-2">
                     <i class="bi bi-list-check"></i> View Orders
@@ -30,6 +48,38 @@
                     <i class="bi bi-shop"></i> Continue Shopping
                 </a>
             </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <h5><i class="bi bi-exclamation-triangle"></i> Checkout Failed</h5>
+            <p>@_errorMessage</p>
+
+            @if (_sagaResult != null)
+            {
+                <hr>
+                <h6><i class="bi bi-diagram-3"></i> Saga Execution Log:</h6>
+                <ul class="list-group list-group-flush">
+                    @foreach (var step in _sagaResult.Steps)
+                    {
+                        var badgeClass = step.Status switch
+                        {
+                            SagaStepStatus.Completed => "bg-success",
+                            SagaStepStatus.Failed => "bg-danger",
+                            _ => "bg-warning"
+                        };
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>@step.Name @(step.Error != null ? $"— {step.Error}" : "")</span>
+                            <span class="badge @badgeClass">@step.Status</span>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <button class="btn btn-primary mt-3" @onclick="PlaceOrder">
+                <i class="bi bi-arrow-clockwise"></i> Retry
+            </button>
         </div>
     }
     else
@@ -170,6 +220,8 @@
     };
     private bool _processing;
     private bool _orderPlaced;
+    private string? _errorMessage;
+    private CheckoutSagaResult? _sagaResult;
     private const string UserName = "john_doe";
 
     protected override async Task OnInitializedAsync()
@@ -180,10 +232,13 @@
     private async Task PlaceOrder()
     {
         _processing = true;
+        _errorMessage = null;
         StateHasChanged();
 
-        // Create order directly via Ordering API
-        // (MassTransit InMemory bus doesn't work across separate processes)
+        // Generate idempotency key to prevent duplicate orders on double-click/retry
+        var idempotencyKey = $"{UserName}-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+
+        // Build the order model
         var order = new OrderModel
         {
             Id = Guid.NewGuid(),
@@ -218,18 +273,35 @@
             TotalPrice = _cart.Items.Sum(x => x.Price * x.Quantity)
         };
 
-        var orderId = await OrderService.CreateOrder(order);
-        var success = orderId.HasValue;
-
-        if (success)
+        // Execute the Checkout Saga (with compensation on failure)
+        var sagaContext = new CheckoutSagaContext
         {
-            // Clear the basket after successful order
-            _checkout.UserName = UserName;
-            await BasketService.Checkout(_checkout);
-        }
+            UserName = UserName,
+            Order = order,
+            CheckoutRequest = new BasketCheckoutRequest
+            {
+                UserName = UserName,
+                CustomerId = _checkout.CustomerId,
+                FirstName = _checkout.FirstName,
+                LastName = _checkout.LastName,
+                EmailAddress = _checkout.EmailAddress,
+                AddressLine = _checkout.AddressLine,
+                Country = _checkout.Country,
+                State = _checkout.State,
+                ZipCode = _checkout.ZipCode,
+                CardName = _checkout.CardName,
+                CardNumber = _checkout.CardNumber,
+                Expiration = _checkout.Expiration,
+                Cvv = _checkout.Cvv,
+                PaymentMethod = _checkout.PaymentMethod
+            },
+            IdempotencyKey = idempotencyKey
+        };
 
+        _sagaResult = await SagaOrchestrator.ExecuteAsync(sagaContext);
+        _orderPlaced = _sagaResult.IsSuccess;
+        _errorMessage = _sagaResult.ErrorMessage;
         _processing = false;
-        _orderPlaced = success;
         StateHasChanged();
     }
 

@@ -55,6 +55,10 @@ else
     });
 }
 
+// Idempotency — prevents duplicate order creation from retries/double-clicks
+builder.Services.AddSingleton<EShop.Ordering.API.Idempotency.IIdempotencyService, 
+    EShop.Ordering.API.Idempotency.IdempotencyService>();
+
 builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 builder.Services.AddHealthChecks();
 

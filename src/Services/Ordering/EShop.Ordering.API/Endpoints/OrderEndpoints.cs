@@ -38,10 +38,12 @@ public class OrderEndpoints : ICarterModule
             var result = await sender.Send(new CreateOrderCommand(orderDto));
             return Results.Created($"/api/v1/ordering/orders/{result.Id}", result);
         })
+        .AddEndpointFilter<EShop.Ordering.API.Idempotency.IdempotencyFilter>()
         .WithName("CreateOrder")
         .Produces<CreateOrderResult>(StatusCodes.Status201Created)
         .ProducesProblem(StatusCodes.Status400BadRequest)
-        .WithSummary("Create a new order");
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .WithSummary("Create a new order (idempotent with Idempotency-Key header)");
 
         group.MapPut("/", async (OrderDto orderDto, ISender sender) =>
         {
